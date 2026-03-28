@@ -1,0 +1,41 @@
+// Bu dosya Prisma'nın ayar dosyasıdır
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 1. KULLANICI TABLOSU (Kayıt ekranındaki veriler buraya gelecek)
+model User {
+  id             String    @id @default(cuid())
+  name           String
+  email          String    @unique
+  password       String
+  plan           String    @default("Standart") // Standart, Pro, Gold
+  credits        Int       @default(3)          // Kalan içerik üretme hakkı
+  categories     String    // Seçtiği 3 kategoriyi JSON formatında tutacağız
+  createdAt      DateTime  @default(now())
+  
+  // Bir kullanıcının birden fazla ürettiği içerik olabilir (İlişki kuruyoruz)
+  contents       Content[] 
+}
+
+// 2. ÜRETİLEN İÇERİKLER TABLOSU (Dashboard'da listelenecek geçmiş)
+model Content {
+  id             String    @id @default(cuid())
+  userId         String
+  type           String    // "Video" veya "Görsel/Metin"
+  platform       String    // "Instagram Reels", "LinkedIn" vb.
+  promptText     String    // Kullanıcının yazdığı sihirli kelimeler
+  title          String    // Yapay zekanın ürettiği başlık
+  caption        String    // Yapay zekanın ürettiği açıklama
+  hashtags       String    // Yapay zekanın ürettiği etiketler
+  createdAt      DateTime  @default(now())
+
+  // Bu içeriğin hangi kullanıcıya ait olduğunu bağlıyoruz
+  user           User      @relation(fields: [userId], references: [id])
+}
