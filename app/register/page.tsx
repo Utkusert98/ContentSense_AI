@@ -14,6 +14,8 @@ export default function Register() {
     const [confirmPassword, setConfirmPassword] = useState("");
     const [rememberMe, setRememberMe] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    
+    // Göz ikonu durumları (Zaten eklemişsin, kusursuz çalışıyor)
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -22,12 +24,13 @@ export default function Register() {
         "Teknoloji & Yazılım", "Moda", "Hobi", "Spor", "Eğlence", "Eğitim"
     ];
 
+    // GÜNCELLENDİ: Şifre gücü tam olarak senin istediğin katı kurallara göre hesaplanıyor
     const calculateStrength = (pass: string) => {
         let score = 0;
-        if (pass.length >= 6) score += 25;
-        if (pass.length >= 10) score += 25;
-        if (/[A-Z]/.test(pass)) score += 25;
-        if (/[0-9!@#$%^&*]/.test(pass)) score += 25;
+        if (pass.length >= 8) score += 25; // Uzunluk şartı (En az 8)
+        if (/[A-Z]/.test(pass)) score += 25; // Büyük harf şartı
+        if (/[0-9]/.test(pass)) score += 25; // Sayı şartı
+        if (/[^A-Za-z0-9]/.test(pass)) score += 25; // Özel karakter şartı
         return score;
     };
     const strength = calculateStrength(password);
@@ -38,6 +41,28 @@ export default function Register() {
         } else {
             if (selectedCategories.length < 3) setSelectedCategories([...selectedCategories, category]);
         }
+    };
+
+    // YENİ: İleri butonuna basıldığında kuralları kontrol eden zeki dedektif
+    const handleNextStep = () => {
+        if (step === 1) {
+            // İsim Doğrulama (Sadece harf ve boşluk)
+            const nameRegex = /^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/;
+            if (!name || !nameRegex.test(name)) {
+                return alert("⚠️ İsim alanına sadece harf girebilirsiniz. (Sayı ve özel karakter kullanılamaz)");
+            }
+            if (!email) {
+                return alert("⚠️ Lütfen geçerli bir e-posta adresi girin.");
+            }
+            if (password !== confirmPassword) {
+                return alert("⚠️ Şifreleriniz birbiriyle uyuşmuyor!");
+            }
+            // Şifre Gücü Doğrulama (Bar %100 olmadan geçemez)
+            if (strength < 100) {
+                return alert("⚠️ Lütfen daha güçlü bir şifre belirleyin. Şifreniz en az 8 karakter olmalı, büyük harf, sayı ve özel karakter (!@#$% vb.) içermelidir.");
+            }
+        }
+        setStep(step + 1);
     };
 
     // GERÇEK API BAĞLANTISI VE HAFIZA KAYDI
@@ -62,7 +87,7 @@ export default function Register() {
                 if (selectedCategories.length > 0) localStorage.setItem("userCategories", JSON.stringify(selectedCategories));
                 localStorage.setItem("userPlan", selectedPlan);
                 localStorage.setItem("userCredits", selectedPlan === "Standart" ? "3" : "9999");
-                localStorage.setItem("userEmail", email); // İçerik üretirken kim olduğunu bilmek için eklendi
+                localStorage.setItem("userEmail", email); 
                 
                 window.location.href = "/dashboard";
             } else {
@@ -106,34 +131,47 @@ export default function Register() {
                         <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Hesap Oluştur</h2>
                         <p className="text-gray-500 mb-6">İçerik üretmeye başlamak için temel bilgilerinizi girin.</p>
                         <div className="space-y-4">
-                            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad Soyad" className="w-full p-4 rounded-xl border border-gray-300 bg-white focus:ring-2 focus:ring-[var(--color-primary)]" />
+                            <div>
+                                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad Soyad" className="w-full p-4 rounded-xl border border-gray-300 bg-white focus:ring-2 focus:ring-[var(--color-primary)]" />
+                                {/* GÜNCELLENDİ: İsim altı uyarı metni */}
+                                <p className="text-xs text-gray-500 mt-1 font-medium ml-1">Sayı ve özel karakter yazmayın.</p>
+                            </div>
+                            
                             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-posta Adresi (Zorunlu)" className="w-full p-4 rounded-xl border border-gray-300 bg-white focus:ring-2 focus:ring-[var(--color-primary)]" required />
                             
                             <div>
                                 <div className="relative">
+                                    {/* GÜNCELLENDİ: Şifre Göz İkonu Aktif */}
                                     <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Şifre (Zorunlu)" className="w-full p-4 pr-12 rounded-xl border border-gray-300 bg-white focus:ring-2 focus:ring-[var(--color-primary)]" required />
-                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none">
                                         {showPassword ? "👁️‍🗨️" : "👁️"}
                                     </button>
                                 </div>
                                 {password.length > 0 && (
                                     <div className="mt-2">
                                         <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
-                                            <div className="h-full transition-all duration-300" style={{ width: `${strength}%`, backgroundColor: strength < 50 ? '#ef4444' : strength < 100 ? '#f59e0b' : '#22c55e' }}></div>
+                                            {/* GÜNCELLENDİ: Güç barı renkleri hassaslaştırıldı */}
+                                            <div className="h-full transition-all duration-300" style={{ width: `${strength}%`, backgroundColor: strength <= 25 ? '#ef4444' : strength === 50 ? '#f97316' : strength === 75 ? '#eab308' : '#22c55e' }}></div>
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-1 text-right">{strength < 50 ? 'Zayıf' : strength < 100 ? 'Orta' : 'Güçlü'}</p>
+                                        <p className="text-xs mt-1 font-bold text-right" style={{ color: strength <= 25 ? '#ef4444' : strength === 50 ? '#f97316' : strength === 75 ? '#eab308' : '#22c55e' }}>
+                                            {strength <= 25 ? 'Çok Zayıf' : strength === 50 ? 'Zayıf' : strength === 75 ? 'Orta' : 'Çok Güçlü'}
+                                        </p>
                                     </div>
                                 )}
                             </div>
                             
                             <div className="relative">
-                                <input type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Şifreyi Onayla (Zorunlu)" className="w-full p-4 pr-12 rounded-xl border border-gray-300 bg-white focus:ring-2 focus:ring-[var(--color-primary)]" required />
-                                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                {/* GÜNCELLENDİ: Şifre Tekrar Göz İkonu Aktif ve Eşleşmezse Kırmızı Çerçeve */}
+                                <input type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Şifreyi Onayla (Zorunlu)" className={`w-full p-4 pr-12 rounded-xl border focus:outline-none focus:ring-2 transition-all ${confirmPassword && password !== confirmPassword ? 'border-red-400 focus:ring-red-500' : 'border-gray-300 bg-white focus:ring-[var(--color-primary)]'}`} required />
+                                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none">
                                     {showConfirmPassword ? "👁️‍🗨️" : "👁️"}
                                 </button>
+                                {confirmPassword && password !== confirmPassword && (
+                                    <p className="text-xs text-red-500 mt-1 font-bold ml-1 absolute -bottom-5 left-0">Şifreler uyuşmuyor</p>
+                                )}
                             </div>
 
-                            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 font-medium">
+                            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 font-medium pt-4">
                                 <input type="checkbox" checked={rememberMe} onChange={() => setRememberMe(!rememberMe)} className="w-4 h-4 text-[var(--color-primary)]" />
                                 Hesabımı açık tut (Beni Hatırla)
                             </label>
@@ -219,7 +257,8 @@ export default function Register() {
                 <div className="mt-10 flex justify-between items-center">
                     {step > 1 ? <button onClick={() => setStep(step - 1)} className="text-gray-500 font-semibold hover:text-gray-800 transition-colors">Geri</button> : <div></div>}
 
-                    {step < 4 ? <button disabled={step === 2 && selectedCategories.length === 0} onClick={() => setStep(step + 1)} className="bg-gray-900 text-white px-8 py-3 rounded-full font-bold shadow-md hover:bg-gray-800 disabled:opacity-50">İleri</button> : 
+                    {/* GÜNCELLENDİ: "İleri" butonu artık handleNextStep fonksiyonuna gidiyor, güvenlikten geçmeyen adım atlayamaz! */}
+                    {step < 4 ? <button disabled={step === 2 && selectedCategories.length === 0} onClick={handleNextStep} className="bg-gray-900 text-white px-8 py-3 rounded-full font-bold shadow-md hover:bg-gray-800 disabled:opacity-50">İleri</button> : 
                     <button onClick={handleRegisterAndStart} disabled={isLoading} className="bg-gray-900 text-white px-8 py-3 rounded-full font-semibold shadow-xl hover:bg-gray-800 transition-all text-center hover:scale-105 disabled:opacity-50 disabled:scale-100">
                         {isLoading ? "Kaydediliyor..." : "Kayıt Ol ve Başla"}
                     </button>}
