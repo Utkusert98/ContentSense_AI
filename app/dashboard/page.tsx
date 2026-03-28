@@ -11,17 +11,19 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchContents = async () => {
       const email = localStorage.getItem("userEmail");
-      
-      if (!email) {
-        window.location.href = "/login";
-        return;
-      }
+      if (!email) return window.location.href = "/login";
 
       try {
         const res = await fetch(`/api/contents?email=${email}`);
         if (res.ok) {
           const data = await res.json();
-          setPastContents(data.contents);
+          // LocalStorage'daki hasUpload (fotoğraf yüklendi mi) bilgisini DB verisiyle eşleştiriyoruz
+          const localContents = JSON.parse(localStorage.getItem("pastContents") || "[]");
+          const merged = data.contents.map((dbItem: any) => {
+              const match = localContents.find((lc: any) => lc.id === dbItem.id);
+              return { ...dbItem, hasUpload: match?.hasUpload || false };
+          });
+          setPastContents(merged);
         }
       } catch (error) {
         console.error("İçerikler çekilemedi:", error);
@@ -36,6 +38,15 @@ export default function Dashboard() {
   const formatDate = (dateString: string) => {
     const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' };
     return new Date(dateString).toLocaleDateString('tr-TR', options);
+  };
+
+  // Kendi yüklediği görseli getiren, yoksa yapay zeka görseli koyan yardımcı fonksiyon
+  const getDisplayImage = (content: any) => {
+      if (content.hasUpload) {
+          const uploads = JSON.parse(localStorage.getItem("tempUserUploads") || "[]");
+          if (uploads.length > 0) return uploads[0]; // Kendi yüklediği ilk fotoğrafı göster
+      }
+      return `https://image.pollinations.ai/prompt/${encodeURIComponent(content.title + " high quality aesthetic modern")}?width=400&height=250&nologo=true`;
   };
 
   return (
@@ -67,15 +78,12 @@ export default function Dashboard() {
                 pastContents.map((content) => (
                   <div key={content.id} className="glass-panel p-0 hover:border-[var(--color-primary)] transition-colors cursor-pointer group flex flex-col h-full overflow-hidden">
                     
-                    {/* GÜNCELLENDİ: Gerçek Yapay Zeka Görseli (Kartın Üst Kısmı) */}
-                    <div className="h-48 w-full bg-gray-200 relative overflow-hidden">
-                        {/* İçeriğin başlığına göre anında görsel üreten API */}
+                    <div className="h-48 w-full bg-gray-900 relative overflow-hidden">
                         <img 
-                            src={`https://image.pollinations.ai/prompt/${encodeURIComponent(content.title + " high quality aesthetic modern")}?width=400&height=250&nologo=true`} 
+                            src={getDisplayImage(content)} 
                             alt={content.title} 
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90" 
                         />
-                        {/* Üstteki etiketler */}
                         <div className="absolute top-3 right-3">
                             <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/90 backdrop-blur-md text-gray-800 shadow-sm border border-white/50">
                                 {content.platform}
@@ -107,7 +115,6 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {/* Yeni İçerik Kartı */}
               <Link href="/generate" className="glass-panel p-0 border-dashed border-2 border-gray-300 hover:border-[var(--color-primary)] bg-white/20 transition-all cursor-pointer flex flex-col items-center justify-center text-center min-h-[300px] opacity-80 hover:opacity-100 group">
                 <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-md mb-4 group-hover:scale-110 transition-transform">
                   <span className="text-[var(--color-primary)] text-3xl font-light">+</span>
