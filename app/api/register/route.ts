@@ -1,38 +1,45 @@
 import { NextResponse } from "next/server";
-import { prisma } from "../../../lib/prisma";
+import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        // YENİ: language parametresi eklendi. Frontend göndermezse varsayılan olarak "tr" (Türkçe) kabul edilecek, böylece sistem ASLA çökmeyecek.
-        const { name, email, password, plan, categories, language = "tr" } = body;
+        const { name, email, password, categories, plan, language = "tr" } = body;
 
-        // E-posta daha önce kayıtlı mı kontrolü
-        const existingUser = await prisma.user.findUnique({ where: { email } });
-        if (existingUser) {
-            const errorMsg = language === "en" ? "This email is already registered." : language === "de" ? "Diese E-Mail ist bereits registriert." : "Bu e-posta zaten kayıtlı.";
-            return NextResponse.json({ error: errorMsg }, { status: 400 });
+        if (!email || !password) {
+            const missingMsg = language === "en" ? "Email and password are required." : language === "de" ? "E-Mail und Passwort sind erforderlich." : "E-posta ve şifre gereklidir.";
+            return NextResponse.json({ error: missingMsg }, { status: 400 });
         }
 
-        const defaultName = language === "en" ? "Anonymous User" : language === "de" ? "Anonymer Benutzer" : "İsimsiz Kullanıcı";
+        const existingUser = await prisma.user.findUnique({ where: { email } });
+        if (existingUser) {
+            const existMsg = language === "en" ? "This email is already registered." : language === "de" ? "Diese E-Mail ist bereits registriert." : "Bu e-posta adresi zaten kayıtlı.";
+            return NextResponse.json({ error: existMsg }, { status: 400 });
+        }
 
-        // Kullanıcıyı veritabanına kaydet
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // GÜNCELLENDİ: Prisma 'String' beklediği için Array'i virgülle ayrılmış metne çeviriyoruz
+        const categoriesString = Array.isArray(categories) ? categories.join(", ") : (categories || "");
+
         const user = await prisma.user.create({
             data: {
-                name: name || defaultName,
+                name,
                 email,
-                password, // Gerçek bir projede burası şifrelenir
-                plan,
-                categories: JSON.stringify(categories), // Kategorileri metne çevirip kaydediyoruz
-                credits: plan === "Standart" ? 3 : 9999, // Standartsa 3 kredi, Pro/Gold ise sınırsız (9999)
-            }
+                password: hashedPassword,
+                plan: plan || "Standart",
+                credits: plan === "Standart" ? 3 : 9999,
+                categories: categoriesString // Artık hata vermeyecek
+            },
         });
 
-        const successMsg = language === "en" ? "Registration successful!" : language === "de" ? "Registrierung erfolgreich!" : "Kayıt başarılı!";
-
+        const successMsg = language === "en" ? "Registration successful!" : language === "de" ? "Registrierung erfolgreich!" : "Kayıt başarıyla tamamlandı!";
         return NextResponse.json({ message: successMsg, user }, { status: 201 });
+
     } catch (error) {
-        const errorMsg = language === "en" ? "An error occurred during registration." : language === "de" ? "Während der Registrierung ist ein Fehler aufgetreten." : "Kayıt sırasında bir hata oluştu.";
+        console.error("Registration API Error:", error);
+        const errorMsg = "Kayıt sırasında bir hata oluştu.";
         return NextResponse.json({ error: errorMsg }, { status: 500 });
     }
 }

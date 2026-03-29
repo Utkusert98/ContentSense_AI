@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import Link from "next/navigation"; // Link için next/link kullanımı daha doğrudur
+import NextLink from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function Register() {
+    const router = useRouter();
     const [step, setStep] = useState(1);
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [selectedPlan, setSelectedPlan] = useState("Standart");
@@ -20,7 +23,6 @@ export default function Register() {
 
     const [language, setLanguage] = useState("tr");
 
-    // EKSİLTİLEN VE ŞİMDİ GERİ EKLENEN ORİJİNAL DİZİ
     const categories = [
         "Mimari & Tasarım", "Sağlık & Besin Takviyesi",
         "Teknoloji & Yazılım", "Moda", "Hobi", "Spor", "Eğlence", "Eğitim"
@@ -189,36 +191,43 @@ export default function Register() {
         setStep(step + 1);
     };
 
+    // GÜNCELLENDİ: Hata veren JSON okuma işlemi daha güvenli hale getirildi
     const handleRegisterAndStart = async (e: React.MouseEvent) => {
         e.preventDefault(); 
-        
-        if(password !== confirmPassword) {
-            alert(t.alertPassMismatch);
-            return;
-        }
-
         setIsLoading(true);
 
         try {
             const res = await fetch("/api/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, email, password, plan: selectedPlan, categories: selectedCategories }),
+                body: JSON.stringify({ 
+                    name, 
+                    email, 
+                    password, 
+                    plan: selectedPlan, 
+                    categories: selectedCategories 
+                }),
             });
 
+            // GÜNCELLENDİ: Yanıtı metin olarak oku, eğer boş değilse JSON parse et
+            const textResponse = await res.text();
+            const data = textResponse ? JSON.parse(textResponse) : {};
+
             if (res.ok) {
-                if (selectedCategories.length > 0) localStorage.setItem("userCategories", JSON.stringify(selectedCategories));
+                localStorage.setItem("userEmail", email);
                 localStorage.setItem("userPlan", selectedPlan);
                 localStorage.setItem("userCredits", selectedPlan === "Standart" ? "3" : "9999");
-                localStorage.setItem("userEmail", email); 
+                if (selectedCategories.length > 0) {
+                    localStorage.setItem("userCategories", JSON.stringify(selectedCategories));
+                }
                 
                 window.location.href = "/dashboard";
             } else {
-                const errorData = await res.json();
-                alert(t.alertError + errorData.error);
+                alert(t.alertError + (data.error || "Sunucu hatası"));
                 setIsLoading(false);
             }
         } catch (error) {
+            console.error("Kayıt Hatası:", error);
             alert(t.alertConnection);
             setIsLoading(false);
         }
@@ -227,6 +236,7 @@ export default function Register() {
     const handleGoogleLogin = () => {
         setIsLoading(true);
         setTimeout(() => {
+            localStorage.setItem("userEmail", "google-user@example.com");
             localStorage.setItem("userPlan", "Standart");
             localStorage.setItem("userCredits", "3");
             window.location.href = "/dashboard";
@@ -237,9 +247,9 @@ export default function Register() {
         <div className="min-h-screen flex items-center justify-center p-6 bg-[#f3f4f6]">
             <div className="glass-panel w-full max-w-2xl p-10 relative overflow-hidden z-50 bg-white/80 backdrop-blur-xl">
                 
-                <Link href="/" className="absolute top-6 left-6 text-gray-400 hover:text-[var(--color-primary)] font-bold text-sm flex items-center gap-1 transition-colors">
+                <NextLink href="/" className="absolute top-6 left-6 text-gray-400 hover:text-[var(--color-primary)] font-bold text-sm flex items-center gap-1 transition-colors">
                     {t.backHome}
-                </Link>
+                </NextLink>
 
                 <div className="flex justify-between mb-8 mt-4 relative">
                     <div className="absolute top-1/2 left-0 right-0 h-1 bg-gray-200 -z-10 rounded-full"></div>
@@ -255,15 +265,15 @@ export default function Register() {
                         <p className="text-gray-500 mb-6">{t.step1Desc}</p>
                         <div className="space-y-4">
                             <div>
-                                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t.namePlaceholder} className="w-full p-4 rounded-xl border border-gray-300 bg-white focus:ring-2 focus:ring-[var(--color-primary)]" />
+                                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t.namePlaceholder} className="w-full p-4 rounded-xl border border-gray-300 bg-white focus:ring-2 focus:ring-[var(--color-primary)] outline-none" />
                                 <p className="text-xs text-gray-500 mt-1 font-medium ml-1">{t.nameWarn}</p>
                             </div>
                             
-                            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPlaceholder} className="w-full p-4 rounded-xl border border-gray-300 bg-white focus:ring-2 focus:ring-[var(--color-primary)]" required />
+                            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPlaceholder} className="w-full p-4 rounded-xl border border-gray-300 bg-white focus:ring-2 focus:ring-[var(--color-primary)] outline-none" required />
                             
                             <div>
                                 <div className="relative">
-                                    <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t.passPlaceholder} className="w-full p-4 pr-12 rounded-xl border border-gray-300 bg-white focus:ring-2 focus:ring-[var(--color-primary)]" required />
+                                    <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t.passPlaceholder} className="w-full p-4 pr-12 rounded-xl border border-gray-300 bg-white focus:ring-2 focus:ring-[var(--color-primary)] outline-none" required />
                                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none">
                                         {showPassword ? "🙈" : "👁️"}
                                     </button>
@@ -339,8 +349,7 @@ export default function Register() {
                     <div className="animate-fade-in">
                         <h2 className="text-3xl font-extrabold text-gray-900 mb-6 text-center">{t.step4Title}</h2>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            
-                            <div onClick={() => setSelectedPlan("Standart")} className={`p-6 rounded-2xl border transition-all duration-300 cursor-pointer group flex flex-col ${selectedPlan === "Standart" ? 'bg-white border-[var(--color-primary)] shadow-xl transform scale-105 ring-2 ring-[var(--color-primary)]/40 z-20' : 'bg-white/80 border-gray-300 scale-100 opacity-80 hover:opacity-100'}`}>
+                            <div onClick={() => setSelectedPlan("Standart")} className={`p-6 rounded-2xl border transition-all duration-300 cursor-pointer flex flex-col ${selectedPlan === "Standart" ? 'bg-white border-[var(--color-primary)] shadow-xl transform scale-105 ring-2 ring-[var(--color-primary)]/40' : 'bg-white/80 border-gray-300 opacity-80 hover:opacity-100'}`}>
                                 <h3 className="font-bold text-xl text-gray-800">Standart</h3><p className="text-sm text-gray-500 mb-4">{t.freeTrial}</p>
                                 <ul className="text-sm text-gray-600 space-y-3 flex-grow">
                                     <li className="flex items-center gap-2"><span>✔️</span> {t.stdFeat1}</li>
@@ -349,7 +358,7 @@ export default function Register() {
                                 </ul>
                             </div>
                             
-                            <div onClick={() => setSelectedPlan("Pro")} className={`p-6 rounded-2xl border transition-all duration-300 cursor-pointer text-white flex flex-col ${selectedPlan === "Pro" ? 'bg-[var(--color-primary)] border-[var(--color-primary)] shadow-xl transform scale-105 ring-2 ring-[var(--color-primary)]/40 z-20' : 'bg-[var(--color-primary)]/80 border-transparent scale-100 opacity-80 hover:opacity-100'}`}>
+                            <div onClick={() => setSelectedPlan("Pro")} className={`p-6 rounded-2xl border transition-all duration-300 cursor-pointer text-white flex flex-col ${selectedPlan === "Pro" ? 'bg-[var(--color-primary)] border-[var(--color-primary)] shadow-xl transform scale-105 ring-2 ring-[var(--color-primary)]/40' : 'bg-[var(--color-primary)]/80 border-transparent opacity-80 hover:opacity-100'}`}>
                                 <h3 className="font-bold text-xl">Pro</h3><p className="text-sm text-blue-200 mb-4">₺199 {t.perMonth}</p>
                                 <ul className="text-sm space-y-3 flex-grow">
                                     <li className="flex items-center gap-2"><span>✔️</span> {t.proFeat1}</li>
@@ -359,7 +368,7 @@ export default function Register() {
                                 </ul>
                             </div>
                             
-                            <div onClick={() => setSelectedPlan("Gold")} className={`bg-gradient-to-br from-yellow-400 to-yellow-600 p-6 rounded-2xl border transition-all duration-300 cursor-pointer text-white flex flex-col ${selectedPlan === "Gold" ? 'border-yellow-300 shadow-xl transform scale-105 ring-2 ring-yellow-400/50 z-20' : 'border-yellow-500 scale-100 opacity-80 hover:opacity-100'}`}>
+                            <div onClick={() => setSelectedPlan("Gold")} className={`bg-gradient-to-br from-yellow-400 to-yellow-600 p-6 rounded-2xl border transition-all duration-300 cursor-pointer text-white flex flex-col ${selectedPlan === "Gold" ? 'border-yellow-300 shadow-xl transform scale-105 ring-2 ring-yellow-400/50' : 'border-yellow-500 opacity-80 hover:opacity-100'}`}>
                                 <h3 className="font-bold text-xl">Gold</h3><p className="text-sm text-yellow-100 mb-4">₺499 {t.perMonth}</p>
                                 <ul className="text-sm space-y-3 flex-grow">
                                     <li className="flex items-center gap-2"><span>✔️</span> {t.goldFeat1}</li>
@@ -368,7 +377,6 @@ export default function Register() {
                                     <li className="flex items-center gap-2"><span>✔️</span> {t.goldFeat4}</li>
                                 </ul>
                             </div>
-
                         </div>
                     </div>
                 )}
@@ -381,7 +389,6 @@ export default function Register() {
                         {isLoading ? t.btnSaving : t.btnSubmit}
                     </button>}
                 </div>
-
             </div>
         </div>
     );

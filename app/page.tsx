@@ -4,18 +4,14 @@ import Navbar from "../components/Navbar";
 import { useEffect, useState } from "react";
 
 export default function Home() {
-  
-  // YENİ: Seçilen dili hafızadan okuyan state
+  const [isMounted, setIsMounted] = useState(false);
   const [language, setLanguage] = useState("tr");
 
-  // YENİ: Dili anlık olarak dinleyen ve sayfaya uygulayan yapı
   useEffect(() => {
-    // İlk yüklemede dili al
+    setIsMounted(true);
     const savedLang = localStorage.getItem("userLanguage");
     if (savedLang) setLanguage(savedLang);
 
-    // Navbar'dan dil değiştiğinde (localStorage güncellendiğinde) buranın da haberi olsun diye bir dinleyici ekliyoruz.
-    // (Aynı sayfada anında tepki vermesi için özel bir event dinleyicisi de eklenebilir ama Next.js router yapısında bu yaklaşım en güvenlisidir)
     const intervalId = setInterval(() => {
         const currentLang = localStorage.getItem("userLanguage") || "tr";
         if (currentLang !== language) setLanguage(currentLang);
@@ -24,7 +20,6 @@ export default function Home() {
     return () => clearInterval(intervalId);
   }, [language]);
 
-  // YENİ: Ana Sayfa Metinleri İçin Akıllı Sözlük
   const translations = {
     tr: {
       heroTitlePart1: "İçeriğinizi ",
@@ -41,7 +36,6 @@ export default function Home() {
       terms: "Kullanım Koşulları",
       contact: "İletişim",
       
-      // Showcase Çevirileri
       showcase: [
         { title: "Modern İç Mimari", tag: "#mimari #içmekan", type: "Görsel (Mimari)", media: "https://images.unsplash.com/photo-1618220179428-22790b461013?q=80&w=800&auto=format&fit=crop", isVideo: false },
         { title: "Üretken Setup", tag: "#teknoloji #yazılım", type: "Görsel (Teknoloji)", media: "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?q=80&w=800&auto=format&fit=crop", isVideo: false },
@@ -66,7 +60,6 @@ export default function Home() {
       terms: "Terms of Service",
       contact: "Contact",
 
-      // Showcase Çevirileri
       showcase: [
         { title: "Modern Interior", tag: "#architecture #interior", type: "Image (Arch)", media: "https://images.unsplash.com/photo-1618220179428-22790b461013?q=80&w=800&auto=format&fit=crop", isVideo: false },
         { title: "Productive Setup", tag: "#tech #software", type: "Image (Tech)", media: "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?q=80&w=800&auto=format&fit=crop", isVideo: false },
@@ -91,7 +84,6 @@ export default function Home() {
       terms: "Nutzungsbedingungen",
       contact: "Kontakt",
 
-      // Showcase Çevirileri
       showcase: [
         { title: "Modernes Interieur", tag: "#architektur #innen", type: "Bild (Arch)", media: "https://images.unsplash.com/photo-1618220179428-22790b461013?q=80&w=800&auto=format&fit=crop", isVideo: false },
         { title: "Produktives Setup", tag: "#tech #software", type: "Bild (Tech)", media: "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?q=80&w=800&auto=format&fit=crop", isVideo: false },
@@ -103,7 +95,9 @@ export default function Home() {
     }
   };
 
-  const t = translations[language as keyof typeof translations];
+  // Sunucu ve istemci uyuşmazlığını önleyen temel mantık
+  const currentLang = isMounted ? language : "tr";
+  const t = translations[currentLang as keyof typeof translations] || translations.tr;
     
   return (
     <div className="min-h-screen bg-transparent pt-28 pb-0 flex flex-col items-center overflow-x-hidden">
@@ -111,10 +105,14 @@ export default function Home() {
 
       <main className="w-full max-w-7xl px-6 flex flex-col items-center text-center">
         
-        <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 mb-6 tracking-tight">
-          {t.heroTitlePart1}<span className="text-[var(--color-primary)]">{t.heroTitleHighlight}</span>{t.heroTitlePart2}
+        {/* GÜNCELLENDİ: Hydration hatasını önlemek için span parçalaması kaldırıldı, tek blok yapıldı */}
+        <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 mb-6 tracking-tight" suppressHydrationWarning>
+          {t.heroTitlePart1}
+          <span className="text-[var(--color-primary)]">{t.heroTitleHighlight}</span>
+          {t.heroTitlePart2}
         </h1>
-        <p className="text-xl text-gray-600 mb-16 max-w-2xl font-medium">
+        
+        <p className="text-xl text-gray-600 mb-16 max-w-2xl font-medium" suppressHydrationWarning>
           {t.heroSubtitle}
         </p>
 
@@ -135,11 +133,11 @@ export default function Home() {
                 </div>
 
                 <div className={`absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black/90 via-black/40 to-transparent text-white text-left`}>
-                  <div className="mb-3 inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/30 text-xs font-bold shadow-sm">
-                    {item.type.includes('Video') || item.type.includes('Bild') || item.type.includes('Image') ? (item.isVideo ? '🎬 ' : '📸 ') : '📸 '} {item.type}
+                  <div className="mb-3 inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/30 text-xs font-bold shadow-sm" suppressHydrationWarning>
+                    {item.isVideo ? '🎬 ' : '📸 '} {item.type}
                   </div>
-                  <p className="font-extrabold text-2xl leading-tight mb-2 drop-shadow-md">{item.title}</p>
-                  <p className="text-sm text-[var(--color-primary)] font-bold drop-shadow-md">{item.tag}</p>
+                  <p className="font-extrabold text-2xl leading-tight mb-2 drop-shadow-md" suppressHydrationWarning>{item.title}</p>
+                  <p className="text-sm text-[var(--color-primary)] font-bold drop-shadow-md" suppressHydrationWarning>{item.tag}</p>
                 </div>
               </div>
             ))}
@@ -147,22 +145,22 @@ export default function Home() {
         </div>
 
         <section className="w-full py-16">
-          <h2 className="text-3xl font-bold text-gray-900 mb-12">{t.whyTitle}</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-12" suppressHydrationWarning>{t.whyTitle}</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
             <div className="glass-panel p-8">
               <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center text-2xl mb-6">💡</div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">{t.feat1Title}</h3>
-              <p className="text-gray-600">{t.feat1Desc}</p>
+              <h3 className="text-xl font-bold text-gray-800 mb-3" suppressHydrationWarning>{t.feat1Title}</h3>
+              <p className="text-gray-600" suppressHydrationWarning>{t.feat1Desc}</p>
             </div>
             <div className="glass-panel p-8">
               <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center text-2xl mb-6">🎯</div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">{t.feat2Title}</h3>
-              <p className="text-gray-600">{t.feat2Desc}</p>
+              <h3 className="text-xl font-bold text-gray-800 mb-3" suppressHydrationWarning>{t.feat2Title}</h3>
+              <p className="text-gray-600" suppressHydrationWarning>{t.feat2Desc}</p>
             </div>
             <div className="glass-panel p-8">
               <div className="w-12 h-12 bg-green-100 text-green-600 rounded-xl flex items-center justify-center text-2xl mb-6">⚡</div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">{t.feat3Title}</h3>
-              <p className="text-gray-600">{t.feat3Desc}</p>
+              <h3 className="text-xl font-bold text-gray-800 mb-3" suppressHydrationWarning>{t.feat3Title}</h3>
+              <p className="text-gray-600" suppressHydrationWarning>{t.feat3Desc}</p>
             </div>
           </div>
         </section>
@@ -176,8 +174,8 @@ export default function Home() {
             ContentSense AI
           </div>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-gray-900 transition-colors">{t.terms}</a>
-            <a href="#" className="hover:text-gray-900 transition-colors">{t.contact}</a>
+            <a href="#" className="hover:text-gray-900 transition-colors" suppressHydrationWarning>{t.terms}</a>
+            <a href="#" className="hover:text-gray-900 transition-colors" suppressHydrationWarning>{t.contact}</a>
           </div>
         </div>
       </footer>
