@@ -4,17 +4,22 @@ import { prisma } from "../../../lib/prisma";
 export async function PUT(req: Request) {
     try {
         const body = await req.json();
-        const { email, newPassword, currentPassword, plan, categories } = body;
+        // YENİ: language parametresi eklendi. Frontend göndermezse varsayılan olarak "tr" (Türkçe) kabul edilecek, böylece sistem ASLA çökmeyecek.
+        const { email, newPassword, currentPassword, plan, categories, language = "tr" } = body;
 
         const user = await prisma.user.findUnique({ where: { email } });
-        if (!user) return NextResponse.json({ error: "Kullanıcı bulunamadı." }, { status: 404 });
+        if (!user) {
+            const errorMsg = language === "en" ? "User not found." : language === "de" ? "Benutzer nicht gefunden." : "Kullanıcı bulunamadı.";
+            return NextResponse.json({ error: errorMsg }, { status: 404 });
+        }
 
         const updateData: any = {};
 
         // 1. Şifre Güncelleme İsteği Varsa
         if (newPassword && currentPassword) {
             if (user.password !== currentPassword) {
-                return NextResponse.json({ error: "Mevcut şifreniz yanlış!" }, { status: 400 });
+                const errorMsg = language === "en" ? "Current password is incorrect!" : language === "de" ? "Aktuelles Passwort ist falsch!" : "Mevcut şifreniz yanlış!";
+                return NextResponse.json({ error: errorMsg }, { status: 400 });
             }
             updateData.password = newPassword;
         }
@@ -37,8 +42,10 @@ export async function PUT(req: Request) {
             data: updateData
         });
 
+        const successMsg = language === "en" ? "Information updated successfully." : language === "de" ? "Informationen erfolgreich aktualisiert." : "Bilgiler başarıyla güncellendi.";
+
         return NextResponse.json({
-            message: "Bilgiler başarıyla güncellendi.",
+            message: successMsg,
             user: {
                 plan: updatedUser.plan,
                 credits: updatedUser.credits,
@@ -47,6 +54,7 @@ export async function PUT(req: Request) {
         }, { status: 200 });
 
     } catch (error) {
-        return NextResponse.json({ error: "Güncelleme sırasında bir hata oluştu." }, { status: 500 });
+        const errorMsg = language === "en" ? "An error occurred during the update." : language === "de" ? "Während der Aktualisierung ist ein Fehler aufgetreten." : "Güncelleme sırasında bir hata oluştu.";
+        return NextResponse.json({ error: errorMsg }, { status: 500 });
     }
 }
