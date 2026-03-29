@@ -52,4 +52,5 @@ Run the project:
 
 Bash
 npm run dev
+
 Developed by Utku Sert Full-Stack Developer
