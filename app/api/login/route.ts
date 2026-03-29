@@ -1,39 +1,39 @@
 import { NextResponse } from "next/server";
-import { prisma } from "../../../lib/prisma";
+import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        // YENİ: language parametresi eklendi. Frontend göndermezse varsayılan "tr" kabul edilir, sistem asla çökmez.
+        // GÜNCELLENDİ: language değişkenini body'den güvenli bir şekilde alıyoruz
         const { email, password, language = "tr" } = body;
 
-        // 1. Veritabanında bu e-postaya ait kullanıcı var mı?
-        const user = await prisma.user.findUnique({
-            where: { email }
-        });
-
-        // Kullanıcı yoksa veya şifre eşleşmiyorsa hata dön
-        if (!user || user.password !== password) {
-            const errorMsg = language === "en" ? "Invalid email or password!" : language === "de" ? "Falsche E-Mail oder Passwort!" : "E-posta veya şifre hatalı!";
-            return NextResponse.json({ error: errorMsg }, { status: 401 });
+        if (!email || !password) {
+            const missingMsg = language === "en" ? "Email and password are required." : "E-posta ve şifre gereklidir.";
+            return NextResponse.json({ error: missingMsg }, { status: 400 });
         }
 
-        const successMsg = language === "en" ? "Login successful!" : language === "de" ? "Anmeldung erfolgreich!" : "Giriş başarılı!";
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            const userMsg = language === "en" ? "User not found." : "Kullanıcı bulunamadı.";
+            return NextResponse.json({ error: userMsg }, { status: 404 });
+        }
 
-        // 2. Başarılıysa kullanıcının bilgilerini (Plan, Kredi, Kategoriler) Frontend'e yolla
-        return NextResponse.json({ 
-            message: successMsg, 
-            user: {
-                name: user.name,
-                email: user.email,
-                plan: user.plan,
-                credits: user.credits,
-                categories: JSON.parse(user.categories)
-            }
-        }, { status: 200 });
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            const passMsg = language === "en" ? "Invalid password." : "Geçersiz şifre.";
+            return NextResponse.json({ error: passMsg }, { status: 401 });
+        }
+
+        const successMsg = language === "en" ? "Login successful!" : "Giriş başarılı!";
+        return NextResponse.json({ message: successMsg, user }, { status: 200 });
 
     } catch (error) {
-        const errorMsg = language === "en" ? "An error occurred during login." : language === "de" ? "Beim Anmelden ist ein Fehler aufgetreten." : "Giriş yapılırken bir hata oluştu.";
+        console.error("Giriş API Hatası:", error);
+        
+        // KRİTİK DÜZELTME: Vercel'in hata verdiği o 36. satırdaki 'language' belirsizliğini sildik.
+        const errorMsg = "Giriş sırasında bir hata oluştu. Lütfen tekrar deneyin.";
+        
         return NextResponse.json({ error: errorMsg }, { status: 500 });
     }
 }
