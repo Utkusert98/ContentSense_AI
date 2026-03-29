@@ -1,39 +1,34 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
+import { prisma } from "../../../lib/prisma";
 
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        // GÜNCELLENDİ: language değişkenini body'den güvenli bir şekilde alıyoruz
-        const { email, password, language = "tr" } = body;
+        const { email, password } = body;
 
-        if (!email || !password) {
-            const missingMsg = language === "en" ? "Email and password are required." : "E-posta ve şifre gereklidir.";
-            return NextResponse.json({ error: missingMsg }, { status: 400 });
+        // 1. Veritabanında bu e-postaya ait kullanıcı var mı?
+        const user = await prisma.user.findUnique({
+            where: { email }
+        });
+
+        // Kullanıcı yoksa veya şifre eşleşmiyorsa hata dön
+        if (!user || user.password !== password) {
+            return NextResponse.json({ error: "E-posta veya şifre hatalı!" }, { status: 401 });
         }
 
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user) {
-            const userMsg = language === "en" ? "User not found." : "Kullanıcı bulunamadı.";
-            return NextResponse.json({ error: userMsg }, { status: 404 });
-        }
-
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            const passMsg = language === "en" ? "Invalid password." : "Geçersiz şifre.";
-            return NextResponse.json({ error: passMsg }, { status: 401 });
-        }
-
-        const successMsg = language === "en" ? "Login successful!" : "Giriş başarılı!";
-        return NextResponse.json({ message: successMsg, user }, { status: 200 });
+        // 2. Başarılıysa kullanıcının bilgilerini (Plan, Kredi, Kategoriler) Frontend'e yolla
+        return NextResponse.json({ 
+            message: "Giriş başarılı!", 
+            user: {
+                name: user.name,
+                email: user.email,
+                plan: user.plan,
+                credits: user.credits,
+                categories: JSON.parse(user.categories)
+            }
+        }, { status: 200 });
 
     } catch (error) {
-        console.error("Giriş API Hatası:", error);
-        
-        // KRİTİK DÜZELTME: Vercel'in hata verdiği o 36. satırdaki 'language' belirsizliğini sildik.
-        const errorMsg = "Giriş sırasında bir hata oluştu. Lütfen tekrar deneyin.";
-        
-        return NextResponse.json({ error: errorMsg }, { status: 500 });
+        return NextResponse.json({ error: "Giriş yapılırken bir hata oluştu." }, { status: 500 });
     }
 }
