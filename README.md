@@ -31,7 +31,7 @@ Deployment: Vercel.
 Clone the repository:
 
 Bash
-git clone https://github.com/yourusername/contentsense-ai.git
+
 cd contentsense-ai
 Install dependencies:
 
